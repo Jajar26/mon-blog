@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center">Liste des Athlètes</h2>
+            <button type="button" class="btn btn-primary float-end" id="showAddAthleteForm">
+                <i class="fas fa-plus"></i> Ajouter un Athlète
+            </button>
+        </div>
+    </div>
+
+    <div class="modal fade" id="athleteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Ajouter un Athlète</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="athleteForm" method="POST" action="{% url 'add_athlete' %}" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" id="athlete_id" name="athlete_id">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="name" class="form-label">Nom</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                                <div class="invalid-feedback">
+                                    Veuillez entrer un nom
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="gender" class="form-label">Genre</label>
+                                <select class="form-select" id="gender" name="gender" required>
+                                    <option value="">Choisir...</option>
+                                    <option value="M">Masculin</option>
+                                    <option value="F">Féminin</option>
+                                    <option value="O">Autre</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="age" class="form-label">Âge</label>
+                                <input type="number" class="form-control" id="age" name="age" required min="16" max="100">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="phone_number" class="form-label">Téléphone</label>
+                                <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="objective" class="form-label">Objectif</label>
+                                <select class="form-select" id="objective" name="objective" required>
+                                    <option value="">Choisir...</option>
+                                    <option value="Perte de poids">Perte de poids</option>
+                                    <option value="Musculation">Musculation</option>
+                                    <option value="Endurance">Endurance</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="is_using_machine" name="is_using_machine">
+                                    <label class="form-check-label" for="is_using_machine">
+                                        Utiliser une machine maintenant
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="wants_reservation" name="wants_reservation">
+                                    <label class="form-check-label" for="wants_reservation">
+                                        Faire une réservation
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12" id="equipmentSection" style="display: none;">
+                                <label for="current_equipment" class="form-label">Équipement actuel</label>
+                                <select class="form-select" id="current_equipment" name="current_equipment" required>
+                                    <option value="">Sélectionner un équipement...</option>
+                                    {% for equipment in all_equipments %}
+                                        {% if equipment.status == 'libre' %}
+                                            <option value="{{ equipment.id }}">{{ equipment.name }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12" id="reservationSection" style="display: none;">
+                                <label for="reservation_equipment" class="form-label">Équipement à réserver</label>
+                                <select class="form-select" id="reservation_equipment" name="reservation_equipment">
+                                    <option value="">Sélectionner un équipement...</option>
+                                    {% for equipment in all_equipments %}
+                                        <option value="{{ equipment.id }}">{{ equipment.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <label for="reservation_date" class="form-label">Date</label>
+                                        <input type="date" class="form-control" id="reservation_date" name="reservation_date">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="reservation_time" class="form-label">Heure</label>
+                                        <input type="time" class="form-control" id="reservation_time" name="reservation_time">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">Ajouter</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer cet athlète ?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row" id="athletesList">
+        {% for athlete in athletes %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ athlete.name }}</h5>
+                    <p class="card-text">
+                        <strong>Âge:</strong> {{ athlete.age }} ans<br>
+                        <strong>Email:</strong> {{ athlete.email }}<br>
+                        <strong>Téléphone:</strong> {{ athlete.phone_number }}<br>
+                        <strong>Genre:</strong> {{ athlete.get_gender_display }}<br>
+                        <strong>Objectif:</strong> {{ athlete.objective }}<br>
+                        {% if athlete.current_equipment %}
+                        <strong>Équipement actuel:</strong> {{ athlete.current_equipment.name }}<br>
+                        {% endif %}
+                        {% if athlete.reservation_equipment %}
+                        <strong>Réservation:</strong> {{ athlete.reservation_equipment.name }}<br>
+                        <strong>Date:</strong> {{ athlete.reservation_date|date:"d/m/Y" }}<br>
+                        <strong>Heure:</strong> {{ athlete.reservation_time|time:"H:i" }}<br>
+                        {% endif %}
+                    </p>
+                    <div class="btn-group w-100">
+                        <button type="button" class="btn btn-primary edit-athlete" 
+                                data-athlete-id="{{ athlete.id }}"
+                                data-name="{{ athlete.name }}"
+                                data-email="{{ athlete.email }}"
+                                data-phone="{{ athlete.phone_number }}"
+                                data-age="{{ athlete.age }}"
+                                data-gender="{{ athlete.gender }}"
+                                data-objective="{{ athlete.objective }}"
+                                data-current-equipment="{{ athlete.current_equipment.id|default:'' }}"
+                                data-reservation-equipment="{{ athlete.reservation_equipment.id|default:'' }}"
+                                data-reservation-date="{{ athlete.reservation_date|date:'Y-m-d'|default:'' }}"
+                                data-reservation-time="{{ athlete.reservation_time|time:'H:i'|default:'' }}">
+                            <i class="fas fa-edit"></i> Modifier
+                        </button>
+                        <button type="button" class="btn btn-danger delete-athlete" 
+                                data-athlete-id="{{ athlete.id }}">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const athleteModal = new bootstrap.Modal(document.getElementById('athleteModal'));
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    let currentAthleteId = null;
+
+    document.getElementById('is_using_machine').addEventListener('change', function() {
+        const equipmentSection = document.getElementById('equipmentSection');
+        equipmentSection.style.display = this.checked ? 'block' : 'none';
+        const equipmentSelect = document.getElementById('current_equipment');
+        equipmentSelect.required = this.checked;
+    });
+
+    document.getElementById('wants_reservation').addEventListener('change', function() {
+        const reservationSection = document.getElementById('reservationSection');
+        reservationSection.style.display = this.checked ? 'block' : 'none';
+        const reservationInputs = reservationSection.querySelectorAll('select, input');
+        reservationInputs.forEach(input => input.required = this.checked);
+    });
+
+    document.getElementById('showAddAthleteForm').addEventListener('click', function() {
+        document.getElementById('modalTitle').textContent = 'Ajouter un Athlète';
+        document.getElementById('athleteForm').reset();
+        document.getElementById('athlete_id').value = '';
+        document.getElementById('submitBtn').textContent = 'Ajouter';
+        document.getElementById('athleteForm').action = "{% url 'add_athlete' %}";
+        athleteModal.show();
+    });
+
+    document.querySelectorAll('.edit-athlete').forEach(button => {
+        button.addEventListener('click', function() {
+            const data = this.dataset;
+            document.getElementById('athlete_id').value = data.athleteId;
+            document.getElementById('name').value = data.name;
+            document.getElementById('email').value = data.email;
+            document.getElementById('phone_number').value = data.phone;
+            document.getElementById('age').value = data.age;
+            document.getElementById('gender').value = data.gender;
+            document.getElementById('objective').value = data.objective;
+
+            const hasCurrentEquipment = data.currentEquipment !== '';
+            document.getElementById('is_using_machine').checked = hasCurrentEquipment;
+            document.getElementById('equipmentSection').style.display = hasCurrentEquipment ? 'block' : 'none';
+            if (hasCurrentEquipment) {
+                document.getElementById('current_equipment').value = data.currentEquipment;
+            }
+
+            const hasReservation = data.reservationEquipment !== '';
+            document.getElementById('wants_reservation').checked = hasReservation;
+            document.getElementById('reservationSection').style.display = hasReservation ? 'block' : 'none';
+            if (hasReservation) {
+                document.getElementById('reservation_equipment').value = data.reservationEquipment;
+                document.getElementById('reservation_date').value = data.reservationDate;
+                document.getElementById('reservation_time').value = data.reservationTime;
+            }
+
+            document.getElementById('modalTitle').textContent = 'Modifier l\'Athlète';
+            document.getElementById('submitBtn').textContent = 'Enregistrer les modifications';
+            document.getElementById('athleteForm').action = `{% url 'add_athlete' %}?id=${data.athleteId}`;
+            
+            athleteModal.show();
+        });
+    });
+
+    document.querySelectorAll('.delete-athlete').forEach(button => {
+        button.addEventListener('click', function() {
+            currentAthleteId = this.dataset.athleteId;
+            deleteModal.show();
+        });
+    });
+
+    document.getElementById('confirmDelete').addEventListener('click', function() {
+        if (currentAthleteId) {
+            fetch(`{% url 'add_athlete' %}?id=${currentAthleteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Erreur lors de la suppression');
+                }
+            });
+            deleteModal.hide();
+        }
+    });
+
+    const athleteForm = document.getElementById('athleteForm');
+    athleteForm.addEventListener('submit', function(event) {
+        if (!this.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        this.classList.add('was-validated');
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if athlete %}Modifier l'Athlète{% else %}Ajouter un Athlète{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>{% if athlete %}Modifier l'Athlète{% else %}Ajouter un Athlète{% endif %}</h2>
+
+    {% if messages %}
+        <div class="alert-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="POST" action="{% url 'add_athlete' %}{% if athlete %}?id={{ athlete.id }}{% endif %}">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="id_name">Nom:</label>
+            {{ form.name }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_age">Âge:</label>
+            {{ form.age }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_email">Email:</label>
+            {{ form.email }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_phone_number">Numéro de téléphone:</label>
+            {{ form.phone_number }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_objective">Objectif:</label>
+            {{ form.objective }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_gender">Genre:</label>
+            {{ form.gender }}
+        </div>
+
+        <div class="form-group">
+            <label for="equipment_id">Choisir un équipement:</label>
+            <select name="equipment_id" id="equipment_id" class="form-control">
+                <option value="">-- Aucun --</option>
+                {% for equipment in all_equipments %}
+                    <option value="{{ equipment.id }}" {% if equipment.status != 'libre' %}disabled{% endif %}>
+                        {{ equipment.name }} - {{ equipment.status }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            {% if athlete %}Modifier{% else %}Ajouter{% endif %} l'Athlète
+        </button>
+    </form>
+
+    {% if athlete %}
+        <form method="POST" action="{% url 'add_athlete' %}?id={{ athlete.id }}" style="margin-top: 10px;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet athlète ?')">
+                Supprimer l'Athlète
+            </button>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

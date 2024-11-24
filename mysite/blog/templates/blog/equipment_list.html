@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .equipment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        padding: 1rem;
+    }
+
+    .equipment-card {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+        background: white;
+    }
+
+    .equipment-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .equipment-image-container {
+        position: relative;
+        height: 200px;
+        overflow: hidden;
+        background-color: #f8f9fa;
+    }
+
+    .equipment-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .status-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 0.875rem;
+        z-index: 2;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .status-libre {
+        background-color: #10B981;
+        color: white;
+    }
+
+    .status-occupé {
+        background-color: #EF4444;
+        color: white;
+    }
+
+    .status-réservé {
+        background-color: #F59E0B;
+        color: white;
+    }
+
+    .filter-btn.active {
+        background-color: #3B82F6;
+        color: white;
+        border-color: #3B82F6;
+    }
+
+    .equipment-details {
+        padding: 1.5rem;
+    }
+
+    .reservation-form {
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        display: none;
+    }
+
+    .status-select {
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    .filter-controls {
+        background: white;
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #3B82F6;
+    }
+
+    .stat-label {
+        color: #6B7280;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <div class="stat-value" id="total-equipment">{{ all_equipments|length }}</div>
+            <div class="stat-label">Total Équipements</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="available-equipment">{{ available_count }}</div>
+            <div class="stat-label">Équipements Disponibles</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="in-use-equipment">{{ in_use_count }}</div>
+            <div class="stat-label">Équipements en Utilisation</div>
+        </div>
+    </div>
+    <div class="filter-controls">
+        <div class="input-group mb-3">
+            <input type="text" id="searchEquipment" class="form-control" placeholder="Rechercher un équipement...">
+        </div>
+        <div class="btn-group w-100">
+            <button class="btn btn-outline-primary filter-btn active" data-filter="all">Tous</button>
+            <button class="btn btn-outline-primary filter-btn" data-filter="libre">Libre</button>
+            <button class="btn btn-outline-primary filter-btn" data-filter="occupé">Occupé</button>
+            <button class="btn btn-outline-primary filter-btn" data-filter="réservé">Réservé</button>
+        </div>
+    </div>
+
+    
+    <div class="equipment-grid">
+        {% for equipment in all_equipments %}
+        <div class="equipment-card" data-status="{{ equipment.status }}" data-name="{{ equipment.name|lower }}">
+            <div class="equipment-image-container">
+                {% if equipment.image %}
+                    <img src="{{ equipment.image.url }}" class="equipment-image" alt="{{ equipment.name }}">
+                {% else %}
+                    <div class="equipment-image d-flex align-items-center justify-content-center">
+                        <i class="fas fa-dumbbell fa-3x text-muted"></i>
+                    </div>
+                {% endif %}
+                <span class="status-badge status-{{ equipment.status }}">
+                    {{ equipment.status|title }}
+                </span>
+            </div>
+
+            <div class="equipment-details">
+                <h5 class="card-title mb-2">{{ equipment.name }}</h5>
+                <p class="card-text text-muted mb-3">{{ equipment.description }}</p>
+                
+                <form method="POST" action="{% url 'update_equipment_status' equipment.id %}" class="status-update-form">
+            
+
+                    <div class="reservation-form" id="reservation-form-{{ equipment.id }}">
+                        <div class="mb-3">
+                            <label class="form-label">Réservé par</label>
+                            <input type="text" name="reserved_by" class="form-control" placeholder="Nom d'utilisateur">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Date de réservation</label>
+                            <input type="date" name="reservation_date" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Heure de réservation</label>
+                            <input type="time" name="reservation_time" class="form-control">
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const equipmentCards = document.querySelectorAll('.equipment-card');
+    const searchInput = document.getElementById('searchEquipment');
+
+    function filterEquipment() {
+        const activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
+        const searchTerm = searchInput.value.toLowerCase();
+
+        equipmentCards.forEach(card => {
+            const status = card.dataset.status;
+            const name = card.dataset.name;
+            const matchesFilter = activeFilter === 'all' || status === activeFilter;
+            const matchesSearch = name.includes(searchTerm);
+            
+            card.style.display = matchesFilter && matchesSearch ? 'block' : 'none';
+        });
+    }
+
+    filterButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            filterEquipment();
+        });
+    });
+
+    searchInput.addEventListener('input', filterEquipment);
+
+    document.querySelectorAll('.status-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const equipmentId = this.dataset.equipmentId;
+            const reservationForm = document.getElementById(`reservation-form-${equipmentId}`);
+            
+            if (this.value === 'réservé') {
+                reservationForm.style.display = 'block';
+                reservationForm.querySelectorAll('input').forEach(input => {
+                    input.required = true;
+                });
+            } else {
+                reservationForm.style.display = 'none';
+                reservationForm.querySelectorAll('input').forEach(input => {
+                    input.required = false;
+                });
+            }
+        });
+    });
+
+    
+    document.querySelectorAll('.status-update-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const toast = new bootstrap.Toast(document.getElementById('notificationToast'));
+                const toastBody = document.querySelector('.toast-body');
+                
+                if (data.status === 'success') {
+                    toastBody.textContent = data.message;
+                    toast.show();
+                    location.reload(); 
+                } else {
+                    toastBody.textContent = data.error || 'Une erreur est survenue';
+                    toast.show();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const toast = new bootstrap.Toast(document.getElementById('notificationToast'));
+                const toastBody = document.querySelector('.toast-body');
+                toastBody.textContent = 'Une erreur est survenue lors de la mise à jour';
+                toast.show();
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
